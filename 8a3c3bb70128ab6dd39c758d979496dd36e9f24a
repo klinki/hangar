@@ -1,0 +1,39 @@
+specs/001-copilot-session-explorer/tasks.md
+  3a572a53739dc729 20-23,33-37,51-54,68-71,85-86,96-100,140
+  e1bce943d3f2953e 1-19,24-32,38-50,55-67,72-84,87-95,101-139
+specs/001-copilot-session-explorer/quickstart.md
+  3a572a53739dc729 1-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "8a3c3bb70128ab6dd39c758d979496dd36e9f24a",
+  "prompts": {
+    "3a572a53739dc729": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019d2523-caf2-70d0-afee-6a391be671f8",
+        "model": "gpt-5.4-mini"
+      },
+      "human_author": "David Klingenberg <dklingenberg@gmail.com>",
+      "messages": [],
+      "total_additions": 67,
+      "total_deletions": 55,
+      "accepted_lines": 67,
+      "overriden_lines": 0
+    },
+    "e1bce943d3f2953e": {
+      "agent_id": {
+        "tool": "gemini",
+        "id": "b0153dc9-908c-4d80-bed7-9938f0653447",
+        "model": "gemini-3-flash-preview"
+      },
+      "human_author": "David Klingenberg <dklingenberg@gmail.com>",
+      "messages": [],
+      "total_additions": 545,
+      "total_deletions": 142,
+      "accepted_lines": 463,
+      "overriden_lines": 0
+    }
+  }
+}
