@@ -1,78 +1,95 @@
-import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join } from "node:path";
-import { getAllProjects } from "./rpc/project-handlers";
-import { getSessionHistory } from "./rpc/session-handlers";
+import { BrowserWindow, defineElectrobunRPC } from "electrobun/bun";
+import type { ExplorerRPCSchema } from "../common/rpc";
+import type { ExplorerState } from "../common/types";
+import { loadExplorerState, loadSessionHistory } from "./data/explorer";
 
 export interface AppOptions {
-  port?: number;
   homeDir?: string;
-  openBrowser?: boolean;
 }
 
-export async function startApp(options: AppOptions = {}): Promise<{ port: number; stop: () => void }> {
+export async function startApp(options: AppOptions = {}): Promise<{ window: BrowserWindow; stop: () => void }> {
   const rootDir = process.cwd();
-  const distDir = join(rootDir, "dist");
-  await ensureRendererBundle(distDir, rootDir);
+  const homeDir = options.homeDir ?? homedir();
+  const rendererBundlePath = join(rootDir, "dist", "renderer", "index.js");
 
-  const port = options.port ?? 3000;
-  const server = Bun.serve({
-    port,
-    fetch: async (request) => handleRequest(request, { homeDir: options.homeDir, distDir, rootDir }),
+  await ensureRendererBundle(rootDir);
+  const [rendererHtml, initialState] = await Promise.all([
+    buildWindowHtml(rootDir, rendererBundlePath),
+    loadExplorerState({ homeDir }),
+  ]);
+
+  let currentState: ExplorerState = initialState;
+
+  const rpc = defineElectrobunRPC<ExplorerRPCSchema, "bun">("bun", {
+    handlers: {
+      requests: {
+        async get_all_projects() {
+          currentState = await loadExplorerState({ homeDir });
+          rpc.send.update_tree(currentState.projects);
+          return currentState.projects;
+        },
+        async get_session_history(sessionId: string) {
+          const session = await loadSessionHistory(sessionId, { homeDir });
+          if (!session) {
+            const error = {
+              message: `Session ${sessionId} was not found.`,
+              code: "session_not_found",
+            };
+            rpc.send.error_reported(error);
+            throw new Error(error.message);
+          }
+
+          rpc.send.session_loaded(session);
+          return session;
+        },
+        async open_project_folder(projectId: string) {
+          const project = currentState.projects.find((entry) => entry.id === projectId);
+          if (!project?.path) {
+            return;
+          }
+
+          await openPath(project.path);
+        },
+      },
+      messages: {},
+    },
   });
 
-  if (options.openBrowser !== false) {
-    void openBrowser(`http://127.0.0.1:${server.port}`);
-  }
+  const window = new BrowserWindow({
+    title: "Copilot Session Explorer",
+    frame: {
+      x: 80,
+      y: 60,
+      width: 1440,
+      height: 960,
+    },
+    html: rendererHtml,
+    preload: null,
+    viewsRoot: null,
+    renderer: "native",
+    rpc,
+    titleBarStyle: "default",
+    transparent: false,
+    passthrough: false,
+    hidden: false,
+    navigationRules: null,
+    sandbox: false,
+  });
 
-  console.log(`Copilot Session Explorer running at http://127.0.0.1:${server.port}`);
+  rpc.send.update_tree(currentState.projects);
 
   return {
-    port: server.port,
-    stop: () => server.stop(),
+    window,
+    stop: () => window.close(),
   };
 }
 
-async function handleRequest(request: Request, context: { homeDir?: string; distDir: string; rootDir: string }): Promise<Response> {
-  const url = new URL(request.url);
-
-  if (url.pathname === "/") {
-    return htmlResponse(await loadIndexHtml(context.rootDir));
-  }
-
-  if (url.pathname === "/index.js") {
-    return fileResponse(join(context.distDir, "index.js"), "application/javascript; charset=utf-8");
-  }
-
-  if (url.pathname === "/styles.css") {
-    return fileResponse(join(context.rootDir, "src/renderer/styles.css"), "text/css; charset=utf-8");
-  }
-
-  if (url.pathname === "/api/projects") {
-    const projects = await getAllProjects({ homeDir: context.homeDir });
-    return jsonResponse(projects);
-  }
-
-  if (url.pathname.startsWith("/api/sessions/")) {
-    const sessionId = decodeURIComponent(url.pathname.slice("/api/sessions/".length));
-    const session = await getSessionHistory(sessionId, { homeDir: context.homeDir });
-    if (!session) {
-      return jsonResponse({ message: `Session ${sessionId} was not found.`, code: "session_not_found" }, 404);
-    }
-
-    return jsonResponse(session);
-  }
-
-  return jsonResponse({ message: "Not found", code: "not_found" }, 404);
-}
-
-async function ensureRendererBundle(distDir: string, rootDir: string): Promise<void> {
-  const bundlePath = join(distDir, "index.js");
-  if (existsSync(bundlePath)) {
-    return;
-  }
-
-  const buildResult = await Bun.build({
+async function ensureRendererBundle(rootDir: string): Promise<void> {
+  const distDir = join(rootDir, "dist", "renderer");
+  await Bun.build({
     entrypoints: [join(rootDir, "src/renderer/index.ts")],
     outdir: distDir,
     target: "browser",
@@ -80,55 +97,43 @@ async function ensureRendererBundle(distDir: string, rootDir: string): Promise<v
     minify: false,
     sourcemap: "external",
   });
+}
 
-  if (!buildResult.success) {
-    const firstError = buildResult.logs[0]?.message ?? "Unable to build renderer bundle.";
-    throw new Error(firstError);
+async function buildWindowHtml(rootDir: string, rendererBundlePath: string): Promise<string> {
+  const [styles, script] = await Promise.all([
+    readFile(join(rootDir, "src/renderer/styles.css"), "utf8"),
+    readFile(rendererBundlePath, "utf8"),
+  ]);
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Copilot Session Explorer</title>
+    <style>${styles}</style>
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <main class="loading-state">Loading Copilot Session Explorer...</main>
+    </div>
+    <script type="module">${script}</script>
+  </body>
+</html>`;
+}
+
+async function openPath(path: string): Promise<void> {
+  if (process.platform === "win32") {
+    await Bun.spawn(["cmd", "/c", "start", "", path], { stdio: "ignore" }).exited.catch(() => undefined);
+    return;
   }
-}
 
-async function loadIndexHtml(rootDir: string): Promise<string> {
-  return readFile(join(rootDir, "src/renderer/index.html"), "utf8");
-}
-
-async function fileResponse(path: string, contentType: string): Promise<Response> {
-  if (!existsSync(path)) {
-    return jsonResponse({ message: `Missing asset: ${path}`, code: "asset_missing" }, 500);
+  if (process.platform === "darwin") {
+    await Bun.spawn(["open", path], { stdio: "ignore" }).exited.catch(() => undefined);
+    return;
   }
 
-  const file = Bun.file(path);
-  return new Response(file, {
-    headers: {
-      "content-type": contentType,
-    },
-  });
-}
-
-function htmlResponse(html: string): Response {
-  return new Response(html, {
-    headers: {
-      "content-type": "text/html; charset=utf-8",
-    },
-  });
-}
-
-function jsonResponse(payload: unknown, status = 200): Response {
-  return new Response(JSON.stringify(payload), {
-    status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-    },
-  });
-}
-
-async function openBrowser(url: string): Promise<void> {
-  const platform = process.platform;
-  const command = platform === "win32" ? "cmd" : platform === "darwin" ? "open" : "xdg-open";
-  const args = platform === "win32" ? ["/c", "start", "", url] : [url];
-  const child = Bun.spawn([command, ...args], {
-    stdio: "ignore",
-  });
-  await child.exited.catch(() => undefined);
+  await Bun.spawn(["xdg-open", path], { stdio: "ignore" }).exited.catch(() => undefined);
 }
 
 if (import.meta.main) {

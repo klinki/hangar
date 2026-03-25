@@ -2,13 +2,15 @@ import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
 const rootDir = process.cwd();
-const distDir = join(rootDir, "dist");
+const rendererDistDir = join(rootDir, "dist", "renderer");
+const mainDistDir = join(rootDir, "dist", "main");
 
-await mkdir(distDir, { recursive: true });
+await mkdir(rendererDistDir, { recursive: true });
+await mkdir(mainDistDir, { recursive: true });
 
 const rendererBuild = await Bun.build({
   entrypoints: [join(rootDir, "src/renderer/index.ts")],
-  outdir: distDir,
+  outdir: rendererDistDir,
   target: "browser",
   format: "esm",
   minify: false,
@@ -24,7 +26,7 @@ if (!rendererBuild.success) {
 
 const mainBuild = await Bun.build({
   entrypoints: [join(rootDir, "src/main/app.ts")],
-  outdir: join(distDir, "main"),
+  outdir: mainDistDir,
   target: "bun",
   format: "esm",
   minify: false,

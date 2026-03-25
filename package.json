@@ -7,5 +7,8 @@
     "build": "bun run scripts/build.ts",
     "dev": "bun run src/main/app.ts",
     "test": "bun test"
+  },
+  "dependencies": {
+    "electrobun": "^1.16.0"
   }
 }

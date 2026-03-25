@@ -13,11 +13,11 @@
    ```bash
    bun test
    ```
-3. **Launch the app**:
+3. **Launch the desktop app**:
    ```bash
    bun run dev
    ```
-4. **Build the browser and main bundles**:
+4. **Build the browser bundle and native bootstrap**:
    ```bash
    bun run build
    ```
@@ -25,13 +25,14 @@
 ## What the app does
 - Reads session data from `~/.copilot/session-state/`.
 - Groups sessions by workspace metadata from `~/.copilot/session-store.db`.
+- Uses the Electrobun runtime to open a native desktop window.
 - Shows projects and sessions in the left tree.
 - Shows the selected session transcript in the main panel.
 
 ## Local Verification (Manual)
 1. Ensure you have sessions in `~/.copilot/session-state/`.
 2. Launch the app using `bun run dev`.
-3. Open the browser at the printed local URL if it does not open automatically.
+3. Verify the native window opens.
 4. Verify the left sidepanel lists your projects.
 5. Expand a project and click a session.
 6. Confirm the main window displays the read-only chat history.
