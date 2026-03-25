@@ -1,7 +1,7 @@
 # Fix Attempt 001
 
 ## Attempt Status
-Implemented
+Fixed
 
 ## Goal
 Make the renderer HTML/CSS load from the same Electrobun view root as the generated JS bundle.
@@ -42,4 +42,4 @@ First implementation attempt for this bug.
   - `Resources/app/views/renderer/index.js`
 
 ## Outcome
-Fixed locally; awaiting user confirmation in the native app.
+Fixed locally and confirmed by the user in the native app on 2026-03-25.

@@ -4,7 +4,7 @@
 Blank Electrobun window after launch
 
 ## Status
-Open
+Fixed
 
 ## Reported Symptoms
 - `bun run dev` opens a window titled `Copilot Session Explorer`.
@@ -15,7 +15,7 @@ Open
 - The native window should show the sidebar project tree and the session transcript panel.
 
 ## Actual Behavior
-- The window opens but does not render the app UI.
+- The window opened blank until the Electrobun view path was corrected.
 
 ## Reproduction Details
 1. Run `bun run dev`.
