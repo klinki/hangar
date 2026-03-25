@@ -22,7 +22,9 @@
 html,
 body {
   margin: 0;
+  height: 100%;
   min-height: 100%;
+  overflow: hidden;
   background:
     radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 30%),
     radial-gradient(circle at bottom right, rgba(59, 130, 246, 0.14), transparent 24%),
@@ -41,6 +43,7 @@ textarea {
 }
 
 .app-shell {
+  height: 100%;
   min-height: 100vh;
 }
 
@@ -56,7 +59,9 @@ textarea {
 .workspace {
   display: grid;
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -67,6 +72,8 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .sidebar__title {
@@ -85,6 +92,10 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .tree-project {
@@ -166,6 +177,8 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .main-panel__header {
@@ -187,9 +200,12 @@ textarea {
 
 .chat-window {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .chat-window__empty,
@@ -208,6 +224,7 @@ textarea {
 .chat-window__messages {
   display: grid;
   gap: 14px;
+  padding-bottom: 8px;
 }
 
 .chat-message {
@@ -250,10 +267,17 @@ textarea {
 @media (max-width: 960px) {
   .workspace {
     grid-template-columns: 1fr;
+    height: 100%;
+    min-height: 100vh;
   }
 
   .sidebar {
     border-right: 0;
     border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .tree-view {
+    max-height: 45vh;
   }
 }
