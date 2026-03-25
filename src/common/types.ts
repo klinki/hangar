@@ -12,6 +12,7 @@ export interface Session {
   timestamp: string;
   title: string;
   rawPath: string;
+  workspacePath?: string;
   messages: Message[];
 }
 

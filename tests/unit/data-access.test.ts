@@ -166,3 +166,56 @@ test("loadExplorerState groups sessions into projects and keeps read-only data",
   expect(state.projects).toHaveLength(2);
   expect(state.projects[0].sessions[0].messages[0].content).toMatch(/prompt/i);
 });
+
+test("loadExplorerState groups unmapped sessions by workspace directory", async () => {
+  const copilotRoot = join(tempRoot, ".copilot");
+  const sessionStateDir = join(copilotRoot, "session-state");
+  mkdirSync(sessionStateDir, { recursive: true });
+
+  const sharedWorkspace = "E:\\projects\\emclient\\open-ai-api";
+  const sessionA = join(sessionStateDir, "alpha-session");
+  const sessionB = join(sessionStateDir, "beta-session");
+  mkdirSync(sessionA, { recursive: true });
+  mkdirSync(sessionB, { recursive: true });
+
+  writeFileSync(
+    join(sessionA, "events.jsonl"),
+    JSON.stringify({ type: "user.message", data: { content: "Alpha prompt" }, timestamp: "2026-03-25T08:00:00.000Z" }),
+    "utf8",
+  );
+  writeFileSync(
+    join(sessionB, "events.jsonl"),
+    JSON.stringify({ type: "user.message", data: { content: "Beta prompt" }, timestamp: "2026-03-25T09:00:00.000Z" }),
+    "utf8",
+  );
+  writeFileSync(
+    join(sessionA, "workspace.yaml"),
+    [
+      "id: alpha-session",
+      `cwd: ${sharedWorkspace}`,
+      `git_root: ${sharedWorkspace}`,
+      "repository: emclient/open-ai-api",
+      "branch: feature/alpha",
+    ].join("\n"),
+    "utf8",
+  );
+  writeFileSync(
+    join(sessionB, "workspace.yaml"),
+    [
+      "id: beta-session",
+      `cwd: ${sharedWorkspace}`,
+      `git_root: ${sharedWorkspace}`,
+      "repository: emclient/open-ai-api",
+      "branch: feature/beta",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const state = await loadExplorerState({ homeDir: tempRoot });
+  expect(state.projects).toHaveLength(1);
+  expect(state.projects[0].name).toBe("open-ai-api");
+  expect(state.projects[0].path).toBe(sharedWorkspace);
+  expect(state.projects[0].sessions).toHaveLength(2);
+  expect(state.projects[0].sessions.map((session) => session.title).sort()).toEqual(["Alpha prompt", "Beta prompt"]);
+  expect(state.projects[0].sessions.every((session) => session.workspacePath === sharedWorkspace)).toBe(true);
+});

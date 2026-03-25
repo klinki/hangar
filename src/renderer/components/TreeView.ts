@@ -13,6 +13,7 @@ export class TreeView {
   constructor(private readonly options: TreeViewOptions) {
     this.root = document.createElement("div");
     this.root.className = "tree-view";
+    this.root.setAttribute("role", "tree");
     this.root.addEventListener("click", (event) => this.handleClick(event));
   }
 
@@ -82,49 +83,60 @@ export class TreeView {
     }
 
     for (const project of this.projects) {
-      const projectCard = document.createElement("section");
-      projectCard.className = "tree-project";
+      const branch = document.createElement("section");
+      branch.className = "tree-branch";
 
       const projectHeader = document.createElement("button");
       projectHeader.type = "button";
-      projectHeader.className = "tree-project__toggle";
+      projectHeader.className = "tree-branch__toggle";
       projectHeader.dataset.projectToggle = "true";
       projectHeader.dataset.projectId = project.id;
+      projectHeader.title = project.path ? `${project.name}\n${project.path}` : project.name;
       const isExpanded = this.expandedProjectIds.has(project.id) || project.sessions.length === 1;
       projectHeader.setAttribute("aria-expanded", String(isExpanded));
+      projectHeader.setAttribute("aria-level", "1");
+      projectHeader.setAttribute("role", "treeitem");
       projectHeader.innerHTML = `
-        <span>
-          <span>${escapeHtml(project.name)}</span>
-          <span class="tree-project__meta">${project.sessions.length} session${project.sessions.length === 1 ? "" : "s"}</span>
+        <span class="tree-branch__label">
+          <span class="tree-branch__name">${escapeHtml(project.name)}</span>
+          <span class="tree-branch__meta">${project.sessions.length} session${project.sessions.length === 1 ? "" : "s"}</span>
         </span>
-        <span class="tree-project__caret">▾</span>
+        <span class="tree-branch__caret">▾</span>
       `;
 
-      projectCard.appendChild(projectHeader);
+      branch.appendChild(projectHeader);
 
       if (isExpanded) {
         const sessionList = document.createElement("div");
-        sessionList.className = "tree-project__sessions";
+        sessionList.className = "tree-branch__children";
+        sessionList.setAttribute("role", "group");
 
         for (const session of project.sessions) {
           const sessionButton = document.createElement("button");
           sessionButton.type = "button";
-          sessionButton.className = "tree-session";
+          sessionButton.className = "tree-leaf";
           if (session.id === this.selectedSessionId) {
-            sessionButton.classList.add("tree-session--active");
+            sessionButton.classList.add("tree-leaf--active");
           }
           sessionButton.dataset.sessionId = session.id;
+          sessionButton.setAttribute("aria-level", "2");
+          sessionButton.setAttribute("role", "treeitem");
+          sessionButton.setAttribute("aria-selected", String(session.id === this.selectedSessionId));
+          sessionButton.title = session.rawPath ? `${session.title}\n${session.rawPath}` : session.title;
           sessionButton.innerHTML = `
-            <span>${escapeHtml(session.title)}</span>
-            <span class="tree-project__meta">${formatSessionTimestamp(session.timestamp)}</span>
+            <span class="tree-leaf__label">
+              <span class="tree-leaf__title">${escapeHtml(session.title)}</span>
+              <span class="tree-leaf__meta">${formatSessionTimestamp(session.timestamp)}</span>
+            </span>
+            <span class="tree-leaf__caret">↳</span>
           `;
           sessionList.appendChild(sessionButton);
         }
 
-        projectCard.appendChild(sessionList);
+        branch.appendChild(sessionList);
       }
 
-      this.root.appendChild(projectCard);
+      this.root.appendChild(branch);
     }
   }
 }

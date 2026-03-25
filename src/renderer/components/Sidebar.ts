@@ -20,7 +20,7 @@ export class Sidebar {
 
     const subtitle = document.createElement("p");
     subtitle.className = "sidebar__subtitle";
-    subtitle.textContent = "Project and session history grouped from ~/.copilot";
+    subtitle.textContent = "Projects as roots, sessions as leaves, read-only from ~/.copilot";
 
     title.append(heading, subtitle);
     this.root.appendChild(title);

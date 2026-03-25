@@ -8,6 +8,7 @@ export interface SessionFileRecord {
   rawPath: string;
   rawContent: string;
   modifiedAt: string;
+  workspacePath?: string;
 }
 
 export async function listSessionFileRecords(sessionStateDir: string): Promise<SessionFileRecord[]> {
@@ -38,6 +39,7 @@ export async function listSessionFileRecords(sessionStateDir: string): Promise<S
       rawPath: payloadPath,
       rawContent,
       modifiedAt: (payloadStats?.mtime ?? rootStats.mtime).toISOString(),
+      workspacePath: entry.isDirectory() ? await readWorkspacePath(entryPath) : undefined,
     });
   }
 
@@ -103,5 +105,48 @@ async function safeStat(path: string): Promise<Awaited<ReturnType<typeof stat>> 
   } catch {
     return undefined;
   }
+}
+
+async function readWorkspacePath(sessionDir: string): Promise<string | undefined> {
+  const workspaceYamlPath = join(sessionDir, "workspace.yaml");
+  const rawContent = await readTextFile(workspaceYamlPath);
+  if (!rawContent) {
+    return undefined;
+  }
+
+  for (const line of rawContent.split(/\r?\n/)) {
+    const match = line.match(/^\s*(?:cwd|git_root)\s*:\s*(.+?)\s*$/i);
+    if (!match) {
+      continue;
+    }
+
+    const value = unquote(match[1].trim());
+    if (value) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+async function readTextFile(path: string): Promise<string | undefined> {
+  try {
+    const content = await Bun.file(path).text();
+    return content.trim() ? content : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function unquote(value: string): string {
+  if (value.length >= 2) {
+    const first = value[0];
+    const last = value[value.length - 1];
+    if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+      return value.slice(1, -1).trim();
+    }
+  }
+
+  return value.trim();
 }
 

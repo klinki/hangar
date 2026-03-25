@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import {
@@ -29,15 +30,16 @@ export async function loadExplorerState(options: ExplorerOptions = {}): Promise<
 
   for (const record of records) {
     const mapping = mappingBySessionId.get(record.sessionId);
-    const projectId = mapping?.projectId ?? UNKNOWN_PROJECT_ID;
-    const projectName = mapping?.projectName ?? UNKNOWN_PROJECT_NAME;
-    const projectPath = mapping?.projectPath ?? "";
+    const projectPath = mapping?.projectPath ?? record.workspacePath ?? "";
+    const projectName = mapping?.projectName ?? resolveProjectName(projectPath);
+    const projectId = mapping?.projectId ?? resolveProjectId(projectPath, projectName);
 
     const session = parseSessionContent(record.rawContent, {
       sessionId: record.sessionId,
       projectId,
       rawPath: record.rawPath,
       modifiedAt: record.modifiedAt,
+      workspacePath: record.workspacePath ?? projectPath,
     });
 
     sessionsById.set(session.id, session);
@@ -85,17 +87,38 @@ export async function loadSessionHistory(sessionId: string, options: ExplorerOpt
   }
 
   const mapping = mappings.find((entry) => entry.sessionId === sessionId);
-  const projectId = mapping?.projectId ?? UNKNOWN_PROJECT_ID;
+  const projectPath = mapping?.projectPath ?? record.workspacePath ?? "";
+  const projectName = mapping?.projectName ?? resolveProjectName(projectPath);
+  const projectId = mapping?.projectId ?? resolveProjectId(projectPath, projectName);
 
   return parseSessionContent(record.rawContent, {
     sessionId,
     projectId,
     rawPath: record.rawPath,
     modifiedAt: record.modifiedAt,
+    workspacePath: record.workspacePath ?? projectPath,
   });
 }
 
 function resolveCopilotRoot(explicitHomeDir: string | undefined): string {
   const homeDir = explicitHomeDir ?? homedir();
   return join(homeDir, COPILOT_HOME_DIRECTORY);
+}
+
+function resolveProjectId(projectPath: string, projectName: string): string {
+  if (projectPath || projectName) {
+    return createHash("sha1").update(projectPath || projectName).digest("hex");
+  }
+
+  return UNKNOWN_PROJECT_ID;
+}
+
+function resolveProjectName(projectPath: string): string {
+  if (!projectPath) {
+    return UNKNOWN_PROJECT_NAME;
+  }
+
+  const normalizedPath = projectPath.replace(/\\/g, "/").replace(/\/+$/g, "");
+  const parts = normalizedPath.split("/").filter(Boolean);
+  return parts.at(-1) ?? UNKNOWN_PROJECT_NAME;
 }

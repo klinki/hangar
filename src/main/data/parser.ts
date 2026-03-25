@@ -5,6 +5,7 @@ export interface ParseSessionOptions {
   projectId: string;
   rawPath: string;
   modifiedAt: string;
+  workspacePath?: string;
 }
 
 export function parseSessionContent(rawContent: string, options: ParseSessionOptions): Session {
@@ -18,6 +19,7 @@ export function parseSessionContent(rawContent: string, options: ParseSessionOpt
     timestamp: options.modifiedAt,
     title,
     rawPath: options.rawPath,
+    workspacePath: options.workspacePath,
     messages,
   };
 }
