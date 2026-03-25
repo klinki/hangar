@@ -31,10 +31,20 @@ function parseMessages(payload: string): Message[] {
     }
   }
 
+  const jsonLines = parseJsonLines(payload);
+  if (jsonLines.length > 0) {
+    return jsonLines;
+  }
+
   return parseDelimitedText(payload);
 }
 
 function extractMessages(value: unknown): Message[] {
+  const eventMessages = normalizeEventMessage(value);
+  if (eventMessages.length > 0) {
+    return eventMessages;
+  }
+
   if (Array.isArray(value)) {
     return value.flatMap((entry, index) => normalizeCandidateMessage(entry, index));
   }
@@ -44,7 +54,7 @@ function extractMessages(value: unknown): Message[] {
   }
 
   const record = value as Record<string, unknown>;
-  const candidates = [record.messages, record.history, record.turns, record.conversation, record.items, record.entries];
+  const candidates = [record.messages, record.history, record.turns, record.conversation, record.items, record.entries, record.events];
 
   for (const candidate of candidates) {
     if (Array.isArray(candidate)) {
@@ -69,6 +79,11 @@ function extractMessages(value: unknown): Message[] {
 }
 
 function normalizeCandidateMessage(candidate: unknown, index: number): Message[] {
+  const eventMessages = normalizeEventMessage(candidate);
+  if (eventMessages.length > 0) {
+    return eventMessages;
+  }
+
   if (typeof candidate === "string") {
     return [
       {
@@ -104,6 +119,62 @@ function normalizeCandidateMessage(candidate: unknown, index: number): Message[]
       timestamp: getTextContent(record.timestamp) ?? getTextContent(record.createdAt) ?? getTextContent(record.time),
     },
   ];
+}
+
+function normalizeEventMessage(candidate: unknown): Message[] {
+  if (!candidate || typeof candidate !== "object") {
+    return [];
+  }
+
+  const record = candidate as Record<string, unknown>;
+  const type = getTextContent(record.type);
+  if (type !== "user.message" && type !== "assistant.message") {
+    return [];
+  }
+
+  const data = record.data && typeof record.data === "object" ? (record.data as Record<string, unknown>) : record;
+  const content =
+    extractPlainText(data.content) ??
+    extractPlainText(data.transformedContent) ??
+    extractPlainText(data.message) ??
+    extractPlainText(data.text) ??
+    extractPlainText(data.body) ??
+    extractPlainText(data.parts);
+
+  if (!content) {
+    return [];
+  }
+
+  return [
+    {
+      role: type === "assistant.message" ? "assistant" : "user",
+      content,
+      timestamp: getTextContent(record.timestamp) ?? getTextContent(data.timestamp),
+    },
+  ];
+}
+
+function parseJsonLines(payload: string): Message[] {
+  if (!payload.includes("\n")) {
+    return [];
+  }
+
+  const messages: Message[] = [];
+  for (const line of payload.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    const parsed = tryParseJson(trimmed);
+    if (!parsed) {
+      continue;
+    }
+
+    messages.push(...extractMessages(parsed));
+  }
+
+  return messages;
 }
 
 function parseDelimitedText(payload: string): Message[] {
@@ -230,6 +301,40 @@ function stringifyContent(value: unknown): string | undefined {
   if (value && typeof value === "object") {
     const record = value as Record<string, unknown>;
     return getTextContent(record.text) ?? getTextContent(record.content) ?? JSON.stringify(value);
+  }
+
+  return undefined;
+}
+
+function extractPlainText(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value.trim() || undefined;
+  }
+
+  if (typeof value === "number" || typeof value === "bigint" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    const pieces = value.flatMap((entry) => {
+      const text = extractPlainText(entry);
+      return text ? [text] : [];
+    });
+
+    const normalized = pieces.join("\n").trim();
+    return normalized || undefined;
+  }
+
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    return (
+      extractPlainText(record.text) ??
+      extractPlainText(record.content) ??
+      extractPlainText(record.transformedContent) ??
+      extractPlainText(record.message) ??
+      extractPlainText(record.body) ??
+      extractPlainText(record.parts)
+    );
   }
 
   return undefined;

@@ -80,6 +80,60 @@ test("parseSessionContent handles structured JSON and plain text transcripts", (
   expect(plain.messages[1].role).toBe("assistant");
 });
 
+test("parseSessionContent extracts chat messages from JSONL event streams", () => {
+  const jsonl = [
+    JSON.stringify({
+      type: "session.start",
+      data: {
+        sessionId: "gamma",
+      },
+      timestamp: "2026-03-25T09:00:00.000Z",
+    }),
+    JSON.stringify({
+      type: "user.message",
+      data: {
+        content: "Please update the workflow.",
+      },
+      timestamp: "2026-03-25T09:01:00.000Z",
+    }),
+    JSON.stringify({
+      type: "tool.execution_start",
+      data: {
+        toolName: "view",
+      },
+      timestamp: "2026-03-25T09:01:05.000Z",
+    }),
+    JSON.stringify({
+      type: "assistant.message",
+      data: {
+        content: "I updated the workflow and kept the app read-only.",
+      },
+      timestamp: "2026-03-25T09:02:00.000Z",
+    }),
+  ].join("\n");
+
+  const parsed = parseSessionContent(jsonl, {
+    sessionId: "gamma",
+    projectId: "project-1",
+    rawPath: "events.jsonl",
+    modifiedAt: "2026-03-25T12:00:00.000Z",
+  });
+
+  expect(parsed.title).toBe("Please update the workflow.");
+  expect(parsed.messages).toHaveLength(2);
+  expect(parsed.messages[0]).toEqual({
+    role: "user",
+    content: "Please update the workflow.",
+    timestamp: "2026-03-25T09:01:00.000Z",
+  });
+  expect(parsed.messages[1]).toEqual({
+    role: "assistant",
+    content: "I updated the workflow and kept the app read-only.",
+    timestamp: "2026-03-25T09:02:00.000Z",
+  });
+  expect(parsed.messages.map((message) => message.content)).not.toContainEqual(expect.stringContaining('"type":"tool.execution_start"'));
+});
+
 test("loadExplorerState groups sessions into projects and keeps read-only data", async () => {
   const copilotRoot = join(tempRoot, ".copilot");
   const sessionStateDir = join(copilotRoot, "session-state");
