@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+.bun/
+*.log
+*.log.*
+.env
+.env.*
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.tmp
+*.swp
