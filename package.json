@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "bun run scripts/build.ts",
-    "dev": "bun run src/main/app.ts",
+    "build": "bunx electrobun build",
+    "dev": "bunx electrobun dev",
     "test": "bun test"
   },
   "dependencies": {

@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { BrowserWindow, defineElectrobunRPC } from "electrobun/bun";
@@ -11,15 +10,9 @@ export interface AppOptions {
 }
 
 export async function startApp(options: AppOptions = {}): Promise<{ window: BrowserWindow; stop: () => void }> {
-  const rootDir = process.cwd();
   const homeDir = options.homeDir ?? homedir();
-  const rendererBundlePath = join(rootDir, "dist", "renderer", "index.js");
-
-  await ensureRendererBundle(rootDir);
-  const [rendererHtml, initialState] = await Promise.all([
-    buildWindowHtml(rootDir, rendererBundlePath),
-    loadExplorerState({ homeDir }),
-  ]);
+  const viewsRoot = join(process.cwd(), "..", "Resources", "app", "views");
+  const initialState = await loadExplorerState({ homeDir });
 
   let currentState: ExplorerState = initialState;
 
@@ -66,9 +59,10 @@ export async function startApp(options: AppOptions = {}): Promise<{ window: Brow
       width: 1440,
       height: 960,
     },
-    html: rendererHtml,
+    url: "views://renderer/index.html",
+    html: null,
     preload: null,
-    viewsRoot: null,
+    viewsRoot,
     renderer: "native",
     rpc,
     titleBarStyle: "default",
@@ -85,41 +79,6 @@ export async function startApp(options: AppOptions = {}): Promise<{ window: Brow
     window,
     stop: () => window.close(),
   };
-}
-
-async function ensureRendererBundle(rootDir: string): Promise<void> {
-  const distDir = join(rootDir, "dist", "renderer");
-  await Bun.build({
-    entrypoints: [join(rootDir, "src/renderer/index.ts")],
-    outdir: distDir,
-    target: "browser",
-    format: "esm",
-    minify: false,
-    sourcemap: "external",
-  });
-}
-
-async function buildWindowHtml(rootDir: string, rendererBundlePath: string): Promise<string> {
-  const [styles, script] = await Promise.all([
-    readFile(join(rootDir, "src/renderer/styles.css"), "utf8"),
-    readFile(rendererBundlePath, "utf8"),
-  ]);
-
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Copilot Session Explorer</title>
-    <style>${styles}</style>
-  </head>
-  <body>
-    <div id="app" class="app-shell">
-      <main class="loading-state">Loading Copilot Session Explorer...</main>
-    </div>
-    <script type="module">${script}</script>
-  </body>
-</html>`;
 }
 
 async function openPath(path: string): Promise<void> {

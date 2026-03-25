@@ -15,11 +15,11 @@
    ```
 3. **Launch the desktop app**:
    ```bash
-   bun run dev
+   bunx electrobun dev
    ```
 4. **Build the browser bundle and native bootstrap**:
    ```bash
-   bun run build
+   bunx electrobun build
    ```
 
 ## What the app does
@@ -31,7 +31,7 @@
 
 ## Local Verification (Manual)
 1. Ensure you have sessions in `~/.copilot/session-state/`.
-2. Launch the app using `bun run dev`.
+2. Launch the app using `bunx electrobun dev`.
 3. Verify the native window opens.
 4. Verify the left sidepanel lists your projects.
 5. Expand a project and click a session.
@@ -41,3 +41,4 @@
 - **No data shown**: Check whether `~/.copilot` exists and contains session files.
 - **SQLite Error**: Ensure the Bun process has read access to `~/.copilot/session-store.db`.
 - **Malformed session data**: The app skips unreadable records and falls back to an empty or partial view.
+
