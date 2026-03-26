@@ -97,11 +97,9 @@ export class TreeView {
       projectHeader.setAttribute("aria-level", "1");
       projectHeader.setAttribute("role", "treeitem");
       projectHeader.innerHTML = `
-        <span class="tree-branch__label">
-          <span class="tree-branch__name">${escapeHtml(project.name)}</span>
-          <span class="tree-branch__meta">${project.sessions.length} session${project.sessions.length === 1 ? "" : "s"}</span>
-        </span>
         <span class="tree-branch__caret">▾</span>
+        <span class="tree-branch__title">${escapeHtml(project.name)}</span>
+        <span class="tree-branch__meta">${project.sessions.length} session${project.sessions.length === 1 ? "" : "s"}</span>
       `;
 
       branch.appendChild(projectHeader);
@@ -124,11 +122,8 @@ export class TreeView {
           sessionButton.setAttribute("aria-selected", String(session.id === this.selectedSessionId));
           sessionButton.title = session.rawPath ? `${session.title}\n${session.rawPath}` : session.title;
           sessionButton.innerHTML = `
-            <span class="tree-leaf__label">
-              <span class="tree-leaf__title">${escapeHtml(session.title)}</span>
-              <span class="tree-leaf__meta">${formatSessionTimestamp(session.timestamp)}</span>
-            </span>
-            <span class="tree-leaf__caret">↳</span>
+            <span class="tree-leaf__title">${escapeHtml(session.title)}</span>
+            <span class="tree-leaf__meta">${formatSessionTimestamp(session.timestamp)}</span>
           `;
           sessionList.appendChild(sessionButton);
         }

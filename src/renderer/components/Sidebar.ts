@@ -14,13 +14,15 @@ export class Sidebar {
     this.root.className = "sidebar";
 
     const title = document.createElement("header");
+    title.className = "sidebar__header";
+
     const heading = document.createElement("h1");
     heading.className = "sidebar__title";
-    heading.textContent = "Copilot Session Explorer";
+    heading.textContent = "Workspace";
 
     const subtitle = document.createElement("p");
     subtitle.className = "sidebar__subtitle";
-    subtitle.textContent = "Projects as roots, sessions as leaves, read-only from ~/.copilot";
+    subtitle.textContent = "Read-only from ~/.copilot";
 
     title.append(heading, subtitle);
     this.root.appendChild(title);
