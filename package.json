@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "bunx electrobun build",
+    "build:release": "bunx electrobun build --env=stable",
     "dev": "bunx electrobun dev",
     "test": "bun test"
   },

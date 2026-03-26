@@ -1,10 +1,11 @@
 import type { ElectrobunConfig } from "electrobun/bun";
+import packageJson from "./package.json";
 
 const config: ElectrobunConfig = {
   app: {
     name: "Copilot Session Explorer",
     identifier: "com.codex.copilot-session-explorer",
-    version: "0.1.0",
+    version: packageJson.version,
     description: "Read-only desktop explorer for GitHub Copilot session history",
   },
   build: {
