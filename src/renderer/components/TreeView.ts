@@ -24,15 +24,15 @@ export class TreeView {
   }
 
   setProjects(projects: Project[], selectedSessionId?: string): void {
+    const previousSelectedSessionId = this.selectedSessionId;
     this.projects = projects;
     this.selectedSessionId = selectedSessionId;
-
-    if (selectedSessionId) {
-      const selectedProject = this.projects.find((project) => project.sessions.some((session) => session.id === selectedSessionId));
-      if (selectedProject) {
-        this.expandedProjectIds.add(selectedProject.id);
-      }
-    }
+    this.expandedProjectIds = reconcileExpandedProjectIds(
+      this.projects,
+      this.selectedSessionId,
+      previousSelectedSessionId,
+      this.expandedProjectIds,
+    );
 
     this.render();
   }
@@ -92,7 +92,7 @@ export class TreeView {
       projectHeader.dataset.projectToggle = "true";
       projectHeader.dataset.projectId = project.id;
       projectHeader.title = project.path ? `${project.name}\n${project.path}` : project.name;
-      const isExpanded = this.expandedProjectIds.has(project.id) || project.sessions.length === 1;
+      const isExpanded = this.expandedProjectIds.has(project.id);
       projectHeader.setAttribute("aria-expanded", String(isExpanded));
       projectHeader.setAttribute("aria-level", "1");
       projectHeader.setAttribute("role", "treeitem");
@@ -155,5 +155,28 @@ function escapeHtml(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+export function reconcileExpandedProjectIds(
+  projects: Project[],
+  selectedSessionId: string | undefined,
+  previousSelectedSessionId: string | undefined,
+  expandedProjectIds: Set<string>,
+): Set<string> {
+  if (!selectedSessionId || selectedSessionId === previousSelectedSessionId) {
+    return expandedProjectIds;
+  }
+
+  const selectedProject = projects.find((project) =>
+    project.sessions.some((session) => session.id === selectedSessionId),
+  );
+
+  if (!selectedProject) {
+    return expandedProjectIds;
+  }
+
+  const nextExpandedProjectIds = new Set(expandedProjectIds);
+  nextExpandedProjectIds.add(selectedProject.id);
+  return nextExpandedProjectIds;
 }
 
