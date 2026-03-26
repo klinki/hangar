@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Database } from "bun:sqlite";
 import { loadExplorerState } from "../../src/main/data/explorer";
+import { loadSessionHistory } from "../../src/main/data/explorer";
 import { parseSessionContent } from "../../src/main/data/parser";
 import { listSessionFileRecords } from "../../src/main/data/session-files";
 import { loadProjectMappings } from "../../src/main/data/session-store";
@@ -218,4 +219,54 @@ test("loadExplorerState groups unmapped sessions by workspace directory", async 
   expect(state.projects[0].sessions).toHaveLength(2);
   expect(state.projects[0].sessions.map((session) => session.title).sort()).toEqual(["Alpha prompt", "Beta prompt"]);
   expect(state.projects[0].sessions.every((session) => session.workspacePath === sharedWorkspace)).toBe(true);
+});
+
+test("loadExplorerState filters sessions without meaningful messages", async () => {
+  const copilotRoot = join(tempRoot, ".copilot");
+  const sessionStateDir = join(copilotRoot, "session-state");
+  mkdirSync(sessionStateDir, { recursive: true });
+
+  const meaningfulId = "meaningful-session";
+  const emptyId = "empty-session";
+
+  writeFileSync(
+    join(sessionStateDir, `${meaningfulId}.json`),
+    JSON.stringify({ messages: [{ role: "user", content: "Keep me" }] }),
+    "utf8",
+  );
+  writeFileSync(
+    join(sessionStateDir, `${emptyId}.json`),
+    JSON.stringify({ messages: [] }),
+    "utf8",
+  );
+
+  const db = new Database(join(copilotRoot, "session-store.db"));
+  db.exec(`
+    CREATE TABLE session_projects (
+      session_id TEXT NOT NULL,
+      workspace_name TEXT NOT NULL,
+      workspace_path TEXT NOT NULL
+    );
+  `);
+  db.query("INSERT INTO session_projects (session_id, workspace_name, workspace_path) VALUES (?, ?, ?)").run(
+    meaningfulId,
+    "Workspace",
+    join(tempRoot, "Workspace"),
+  );
+  db.query("INSERT INTO session_projects (session_id, workspace_name, workspace_path) VALUES (?, ?, ?)").run(
+    emptyId,
+    "Workspace",
+    join(tempRoot, "Workspace"),
+  );
+  db.close();
+
+  const state = await loadExplorerState({ homeDir: tempRoot });
+  expect(state.sessionsById.has(meaningfulId)).toBe(true);
+  expect(state.sessionsById.has(emptyId)).toBe(false);
+  expect(state.projects).toHaveLength(1);
+  expect(state.projects[0].sessions).toHaveLength(1);
+  expect(state.projects[0].sessions[0].id).toBe(meaningfulId);
+
+  const emptySession = await loadSessionHistory(emptyId, { homeDir: tempRoot });
+  expect(emptySession).toBeUndefined();
 });

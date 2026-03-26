@@ -27,10 +27,7 @@ export function parseSessionContent(rawContent: string, options: ParseSessionOpt
 function parseMessages(payload: string): Message[] {
   const jsonResult = tryParseJson(payload);
   if (jsonResult) {
-    const jsonMessages = extractMessages(jsonResult);
-    if (jsonMessages.length > 0) {
-      return jsonMessages;
-    }
+    return extractMessages(jsonResult);
   }
 
   const jsonLines = parseJsonLines(payload);

@@ -42,6 +42,10 @@ export async function loadExplorerState(options: ExplorerOptions = {}): Promise<
       workspacePath: record.workspacePath ?? projectPath,
     });
 
+    if (!hasMeaningfulMessages(session)) {
+      continue;
+    }
+
     sessionsById.set(session.id, session);
 
     const project = projectsById.get(projectId) ?? {
@@ -91,13 +95,15 @@ export async function loadSessionHistory(sessionId: string, options: ExplorerOpt
   const projectName = mapping?.projectName ?? resolveProjectName(projectPath);
   const projectId = mapping?.projectId ?? resolveProjectId(projectPath, projectName);
 
-  return parseSessionContent(record.rawContent, {
+  const session = parseSessionContent(record.rawContent, {
     sessionId,
     projectId,
     rawPath: record.rawPath,
     modifiedAt: record.modifiedAt,
     workspacePath: record.workspacePath ?? projectPath,
   });
+
+  return hasMeaningfulMessages(session) ? session : undefined;
 }
 
 function resolveCopilotRoot(explicitHomeDir: string | undefined): string {
@@ -121,4 +127,8 @@ function resolveProjectName(projectPath: string): string {
   const normalizedPath = projectPath.replace(/\\/g, "/").replace(/\/+$/g, "");
   const parts = normalizedPath.split("/").filter(Boolean);
   return parts.at(-1) ?? UNKNOWN_PROJECT_NAME;
+}
+
+function hasMeaningfulMessages(session: Session): boolean {
+  return session.messages.length > 0;
 }
